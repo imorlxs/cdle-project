@@ -703,11 +703,11 @@ def generate_report(config: dict[str, Any]) -> Path:
         [
             "# Project proposal #1 report",
             "",
-            "## Brief background on PySpark, Dask, Modin, JobLib, Rapids and Koalas",
+            "## Brief background on PySpark, Dask, Modin, Joblib, Rapids and Koalas",
             "- **PySpark / Koalas**: pandas-like APIs on top of Spark, suitable for cluster-scale distributed execution.",
             "- **Dask**: task-graph based parallel dataframe library for scaling pandas-style work across cores or clusters.",
             "- **Modin**: drop-in pandas acceleration layer that can target engines such as Dask.",
-            "- **JobLib**: Python parallelism helper used here to parallelize cross-validation and a pandas-based benchmark baseline.",
+            "- **Joblib**: Python parallelism helper used here to parallelize cross-validation and a pandas-based benchmark baseline.",
             "- **RAPIDS**: GPU dataframe and ML stack (for example cudf / dask_cudf) for CUDA-enabled environments.",
             "",
             "## Materials and methods",
