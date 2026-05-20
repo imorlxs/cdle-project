@@ -555,8 +555,10 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
     regression_predictions = regression_search.predict(X_test)
     rmse = math.sqrt(float(mean_squared_error(y_test, regression_predictions)))
 
-    classifier_y = pd.qcut(y, q=min(4, y.nunique()), labels=False, duplicates="drop")
-    Xc_train, Xc_test, yc_train, yc_test = train_test_split(X, classifier_y, test_size=0.2, random_state=42)
+    discretized_fare_bins = pd.qcut(y, q=min(4, y.nunique()), labels=False, duplicates="drop")
+    X_class_train, X_class_test, y_class_train, y_class_test = train_test_split(
+        X, discretized_fare_bins, test_size=0.2, random_state=42
+    )
     classification_pipeline = Pipeline(
         steps=[
             (
@@ -588,8 +590,8 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
         scoring="f1_weighted",
         n_jobs=-1,
     )
-    classification_search.fit(Xc_train, yc_train)
-    classification_predictions = classification_search.predict(Xc_test)
+    classification_search.fit(X_class_train, y_class_train)
+    classification_predictions = classification_search.predict(X_class_test)
 
     return [
         ModelResult(
@@ -608,14 +610,16 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
             model="LogisticRegression",
             best_params=classification_search.best_params_,
             metrics={
-                "accuracy": round(float(accuracy_score(yc_test, classification_predictions)), 6),
+                "accuracy": round(float(accuracy_score(y_class_test, classification_predictions)), 6),
                 "precision_weighted": round(
-                    float(precision_score(yc_test, classification_predictions, average="weighted", zero_division=0)), 6
+                    float(precision_score(y_class_test, classification_predictions, average="weighted", zero_division=0)),
+                    6,
                 ),
                 "recall_weighted": round(
-                    float(recall_score(yc_test, classification_predictions, average="weighted", zero_division=0)), 6
+                    float(recall_score(y_class_test, classification_predictions, average="weighted", zero_division=0)),
+                    6,
                 ),
-                "f1_weighted": round(float(f1_score(yc_test, classification_predictions, average="weighted")), 6),
+                "f1_weighted": round(float(f1_score(y_class_test, classification_predictions, average="weighted")), 6),
             },
             notes="Target discretized with pandas.qcut before cross-validated LogisticRegression.",
         ),
