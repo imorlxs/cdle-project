@@ -781,8 +781,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         report_path = generate_report(config)
         print(report_path)
         return 0
-    parser.error(f"Unsupported command: {args.command}")
-    return 1
 
 
 if __name__ == "__main__":
