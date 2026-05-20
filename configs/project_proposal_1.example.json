@@ -1,0 +1,22 @@
+{
+  "output_dir": "outputs",
+  "benchmark_backends": ["pandas", "joblib", "dask"],
+  "benchmark_datasets": [
+    {
+      "name": "small_sample",
+      "path": "data/taxi_small.csv"
+    },
+    {
+      "name": "nyc_taxi_reference",
+      "path": "data/taxi_reference.csv"
+    },
+    {
+      "name": "large_sample",
+      "path": "data/taxi_large.csv"
+    }
+  ],
+  "ml_dataset": {
+    "name": "nyc_taxi_reference",
+    "path": "data/taxi_reference.csv"
+  }
+}
