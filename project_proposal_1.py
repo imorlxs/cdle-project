@@ -18,6 +18,7 @@ from typing import Any, Callable, Iterable, Sequence
 
 DEFAULT_TARGET = "fare_amount"
 DEFAULT_OUTPUT_DIR = Path("outputs")
+SYNTHETIC_DATA_START_DATE = datetime(2016, 1, 1, 0, 0, 0)
 KNOWN_NUMERIC_COLUMNS = [
     "passenger_count",
     "trip_distance",
@@ -136,7 +137,7 @@ def build_parser() -> argparse.ArgumentParser:
 def generate_synthetic_taxi_data(output: Path, rows: int = 2000, seed: int = 42) -> Path:
     output.parent.mkdir(parents=True, exist_ok=True)
     rng = random.Random(seed)
-    start = datetime(2016, 1, 1, 0, 0, 0)
+    start = SYNTHETIC_DATA_START_DATE
     payment_types = ["cash", "card", "voucher", "unknown"]
     vendors = ["VTS", "CMT", "DDS"]
     fieldnames = [
