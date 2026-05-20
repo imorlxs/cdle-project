@@ -436,6 +436,13 @@ def _load_pandas_dataset(path: Path) -> Any:
 
 
 def prepare_modeling_frame(df: Any, target_column: str = DEFAULT_TARGET) -> tuple[Any, Any, list[str], list[str]]:
+    """Prepare a pandas modeling frame and return features, target, and inferred column groups.
+
+    The function drops rows with missing target values, engineers pickup calendar fields and trip duration,
+    excludes raw datetime columns from the feature matrix, and returns `(X, y, categorical_columns, numeric_columns)`.
+    It assumes a taxi-like tabular input where `pickup_datetime`, `dropoff_datetime`, `vendor_id`, and
+    `payment_type` may be present.
+    """
     import pandas as pd
     from pandas.api.types import is_bool_dtype, is_object_dtype, is_string_dtype
 
@@ -471,6 +478,11 @@ def prepare_modeling_frame(df: Any, target_column: str = DEFAULT_TARGET) -> tupl
 
 
 def _regression_search(random_state: int = 42) -> tuple[str, Any, dict[str, list[Any]], str]:
+    """Build the regression model selection tuple `(model_name, estimator, grid, notes)`.
+
+    `XGBRegressor` is preferred for the fare regression task. When xgboost is unavailable, the function
+    falls back to `HistGradientBoostingRegressor` and returns a note explaining that fallback.
+    """
     try:
         from xgboost import XGBRegressor
 
@@ -492,6 +504,12 @@ def _regression_search(random_state: int = 42) -> tuple[str, Any, dict[str, list
 
 
 def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
+    """Run the end-to-end fare prediction workflow for a taxi CSV dataset.
+
+    The pipeline loads the dataset, performs preprocessing and feature engineering, then executes two
+    cross-validated tasks: fare regression and discretized-fare classification. It returns a list of
+    `ModelResult` records describing the selected model, best parameters, and evaluation metrics.
+    """
     import pandas as pd
     from sklearn.compose import ColumnTransformer
     from sklearn.impute import SimpleImputer
@@ -781,6 +799,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         report_path = generate_report(config)
         print(report_path)
         return 0
+    return 1
 
 
 if __name__ == "__main__":
