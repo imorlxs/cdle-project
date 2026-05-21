@@ -44,10 +44,16 @@ class BenchmarkResult:
 
 @dataclass
 class ModelResult:
+    """
+    ahora los resultados de clasificación puedan 
+    guardar también la matriz de confusión
+    
+    """
     task: str
     model: str
     best_params: dict[str, Any]
     metrics: dict[str, float]
+    confusion_matrix: list[list[int]] | None = None
     notes: str = ""
 
 
@@ -508,7 +514,8 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
 
     The pipeline loads the dataset, performs preprocessing and feature engineering, then executes two
     cross-validated tasks: fare regression and discretized-fare classification. It returns a list of
-    `ModelResult` records describing the selected model, best parameters, and evaluation metrics.
+    `ModelResult` records describing the selected model, best parameters, evaluation metrics, execution
+    times, and the confusion matrix for the classification task.
     """
     import pandas as pd
     from sklearn.compose import ColumnTransformer
@@ -516,6 +523,7 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
     from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import (
         accuracy_score,
+        confusion_matrix,       # La matriz de confusión permite ver en qué clases falla el modelo
         f1_score,
         mean_absolute_error,
         mean_squared_error,
@@ -529,12 +537,27 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
 
     df = _load_pandas_dataset(dataset)
     X, y, categorical_columns, numeric_columns = prepare_modeling_frame(df)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    numeric_transformer = Pipeline(steps=[("imputer", SimpleImputer(strategy="median"))])
-    categorical_transformer = Pipeline(
-        steps=[("imputer", SimpleImputer(strategy="most_frequent")), ("onehot", OneHotEncoder(handle_unknown="ignore"))]
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
     )
+
+    numeric_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+        ]
+    )
+
+    categorical_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="most_frequent")),
+            ("onehot", OneHotEncoder(handle_unknown="ignore")),
+        ]
+    )
+
     preprocessor = ColumnTransformer(
         transformers=[
             ("num", numeric_transformer, numeric_columns),
@@ -543,7 +566,14 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
     )
 
     regression_name, regression_estimator, regression_grid, regression_note = _regression_search()
-    regression_pipeline = Pipeline(steps=[("preprocess", preprocessor), ("model", regression_estimator)])
+
+    regression_pipeline = Pipeline(
+        steps=[
+            ("preprocess", preprocessor),
+            ("model", regression_estimator),
+        ]
+    )
+
     regression_search = GridSearchCV(
         regression_pipeline,
         regression_grid,
@@ -551,38 +581,72 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
         scoring="neg_root_mean_squared_error",
         n_jobs=-1,
     )
+
+    """
+    Entrenamos y medimos el tiempo 
+    
+    """
+    regression_train_start = time.perf_counter()
     regression_search.fit(X_train, y_train)
+    regression_training_time = time.perf_counter() - regression_train_start
+
+    """ 
+    Tiempos de prediccion 
+    
+    """
+    regression_pred_start = time.perf_counter()
     regression_predictions = regression_search.predict(X_test)
+    regression_prediction_time = time.perf_counter() - regression_pred_start
+
     rmse = math.sqrt(float(mean_squared_error(y_test, regression_predictions)))
 
-    discretized_fare_bins = pd.qcut(y, q=min(4, y.nunique()), labels=False, duplicates="drop")
-    X_class_train, X_class_test, y_class_train, y_class_test = train_test_split(
-        X, discretized_fare_bins, test_size=0.2, random_state=42
+    discretized_fare_bins = pd.qcut(
+        y,
+        q=min(4, y.nunique()),
+        labels=False,
+        duplicates="drop",
     )
-    classification_pipeline = Pipeline(
-        steps=[
+
+    """ 
+    Añadimos porporcionalidad entre 
+    test/train usando stratify
+    
+    """
+    X_class_train, X_class_test, y_class_train, y_class_test = train_test_split(
+        X,
+        discretized_fare_bins,
+        test_size=0.2,
+        random_state=42,
+        stratify=discretized_fare_bins,
+    )
+
+    classification_preprocessor = ColumnTransformer(
+        transformers=[
             (
-                "preprocess",
-                ColumnTransformer(
-                    transformers=[
-                        (
-                            "num",
-                            Pipeline(
-                                steps=[("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]
-                            ),
-                            numeric_columns,
-                        ),
-                        (
-                            "cat",
-                            categorical_transformer,
-                            categorical_columns,
-                        ),
+                "num",
+                Pipeline(
+                    steps=[
+                        ("imputer", SimpleImputer(strategy="median")),
+                        ("scaler", StandardScaler()),
                     ]
                 ),
+                numeric_columns,
             ),
+            (
+                "cat",
+                categorical_transformer,
+                categorical_columns,
+            ),
+        ]
+    )
+
+    classification_pipeline = Pipeline(
+        steps=[
+            ("preprocess", classification_preprocessor),
             ("model", LogisticRegression(max_iter=2000)),
         ]
     )
+
     classification_search = GridSearchCV(
         classification_pipeline,
         {"model__C": [0.5, 1.0, 2.0]},
@@ -590,8 +654,33 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
         scoring="f1_weighted",
         n_jobs=-1,
     )
+    """ 
+    Medimos tiempos para entrenamietno
+    de cladificacion
+    
+    """
+    classification_train_start = time.perf_counter()
     classification_search.fit(X_class_train, y_class_train)
+    classification_training_time = time.perf_counter() - classification_train_start
+
+    """ 
+    Medimos tiempos para prediccion
+    de clasificacion
+    
+    """
+    classification_pred_start = time.perf_counter()
     classification_predictions = classification_search.predict(X_class_test)
+    classification_prediction_time = time.perf_counter() - classification_pred_start
+
+    """ 
+    Añadimos matriz de confusion
+    para clasificacion
+    
+    """
+    classification_confusion_matrix = confusion_matrix(
+        y_class_test,
+        classification_predictions,
+    ).tolist()
 
     return [
         ModelResult(
@@ -602,7 +691,10 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
                 "rmse": round(rmse, 6),
                 "mae": round(float(mean_absolute_error(y_test, regression_predictions)), 6),
                 "r2": round(float(r2_score(y_test, regression_predictions)), 6),
+                "training_time": round(regression_training_time, 6),
+                "prediction_time": round(regression_prediction_time, 6),
             },
+            confusion_matrix=None,
             notes=regression_note or "Cross-validation used GridSearchCV with joblib parallelism.",
         ),
         ModelResult(
@@ -619,12 +711,32 @@ def run_ml_pipeline(dataset: Path) -> list[ModelResult]:
                     float(recall_score(y_class_test, classification_predictions, average="weighted", zero_division=0)),
                     6,
                 ),
-                "f1_weighted": round(float(f1_score(y_class_test, classification_predictions, average="weighted")), 6),
+                "f1_weighted": round(
+                    float(f1_score(y_class_test, classification_predictions, average="weighted", zero_division=0)),
+                    6,
+                ),
+                "precision_macro": round(
+                    float(precision_score(y_class_test, classification_predictions, average="macro", zero_division=0)),
+                    6,
+                ),
+                "recall_macro": round(
+                    float(recall_score(y_class_test, classification_predictions, average="macro", zero_division=0)),
+                    6,
+                ),
+                "f1_macro": round(
+                    float(f1_score(y_class_test, classification_predictions, average="macro", zero_division=0)),
+                    6,
+                ),
+                "training_time": round(classification_training_time, 6),
+                "prediction_time": round(classification_prediction_time, 6),
             },
-            notes="Target discretized with pandas.qcut before cross-validated LogisticRegression.",
+            confusion_matrix=classification_confusion_matrix,
+            notes=(
+                "Target discretized with pandas.qcut into quantile-based fare classes before "
+                "cross-validated LogisticRegression."
+            ),
         ),
     ]
-
 
 def write_benchmark_outputs(results: Sequence[BenchmarkResult], csv_path: Path, summary_path: Path | None = None) -> None:
     csv_path.parent.mkdir(parents=True, exist_ok=True)
@@ -667,12 +779,24 @@ def render_benchmark_summary(results: Sequence[BenchmarkResult]) -> str:
 
 
 def render_ml_summary(results: Sequence[ModelResult]) -> str:
-    lines = ["| Task | Model | Metrics | Notes |", "| --- | --- | --- | --- |"]
-    for row in results:
-        metrics = ", ".join(f"{key}={value}" for key, value in row.metrics.items())
-        lines.append(f"| {row.task} | {row.model} | {metrics} | {row.notes} |")
-    return "\n".join(lines) + "\n"
+    """ 
+    ml_summary mas limpio con una 
+    metrica por fila
 
+    """
+    lines = ["| Task | Model | Metric | Value | Notes |", "| --- | --- | --- | --- | --- |"]
+    for row in results:
+        for metric_name, metric_value in row.metrics.items():
+            lines.append(
+                f"| {row.task} | {row.model} | {metric_name} | {metric_value} | {row.notes} |"
+            )
+
+        if row.confusion_matrix is not None:
+            lines.append(
+                f"| {row.task} | {row.model} | confusion_matrix | {row.confusion_matrix} | Stored as nested class-count matrix. |"
+            )
+
+    return "\n".join(lines) + "\n"
 
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -728,19 +852,28 @@ def generate_report(config: dict[str, Any]) -> Path:
             benchmark_text,
             "",
             "## Experiment #2",
-            "Use the same benchmark harness with `modin` (set `MODIN_ENGINE=dask` for Dask+Modin), `dask_rapids` for Dask+Rapids, and a RAPIDS-enabled Modin environment for Dask+Modin+Rapids. Results will be written into the benchmark summary table above.",
+            "The benchmark harness is prepared to evaluate additional backends such as `modin`, `koalas`, `rapids`, and `dask_rapids` when the corresponding execution environments are available. "
+            "`MODIN_ENGINE=dask` can be used to evaluate a Dask-backed Modin workflow. `dask_rapids` requires a CUDA-enabled RAPIDS environment. "
+            "Results from these optional backends should be integrated into the same benchmark summary table to allow direct comparison against the CPU baselines.",
             "",
             "## Prediction",
             "### Methodology",
-            "- The pipeline cleans known taxi columns, engineers time and duration features, and evaluates both regression and classification tasks.",
-            "- Regression prefers `XGBRegressor`; classification discretizes `fare_amount` and trains `LogisticRegression`.",
-            "- Cross-validation uses `GridSearchCV` with joblib-powered parallel execution.",
+            "- The prediction workflow uses `fare_amount` as the target variable.",
+            "- The pipeline cleans known taxi columns, engineers pickup calendar features and trip duration, and separates numerical and categorical predictors.",
+            "- The regression task predicts the continuous fare amount and prefers `XGBRegressor` when available.",
+            "- The classification task discretizes `fare_amount` into quantile-based fare classes using `pandas.qcut` and trains `LogisticRegression`.",
+            "- Both tasks use `GridSearchCV` with 3-fold cross-validation and joblib-powered parallel execution.",
+            "- Reported metrics include predictive quality metrics and execution-time measurements for training and prediction.",
             "",
             "### Results and Analysis",
             ml_text,
             "",
             "## Discussion and conclusions",
-            "Compare the benchmark table against the ML quality metrics to discuss throughput, library ergonomics, and which workloads benefit from each library or engine combination.",
+            "The benchmark results should be interpreted by considering both execution time and framework overhead. "
+            "For smaller datasets, local pandas-based execution can remain competitive because distributed frameworks introduce scheduling and partition-management overhead. "
+            "As dataset size increases, Dask and other distributed backends are expected to become more useful because they can split operations across partitions or workers. "
+            "The ML results should be analyzed jointly in terms of predictive performance and computational cost: `XGBRegressor` is expected to provide a stronger nonlinear regression baseline, while `LogisticRegression` provides a simpler classification baseline after fare discretization. "
+            "Optional GPU or Spark-based backends should only be discussed as executed results when the corresponding environment was actually available.",
         ]
     ) + "\n"
     report_path.parent.mkdir(parents=True, exist_ok=True)
