@@ -71,6 +71,17 @@ export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 java -version 2>&1 | head -1
 echo "JAVA_HOME=$JAVA_HOME"
 
+echo "=== Downloading GCS connector JAR for PySpark ==="
+mkdir -p "$REPO_DIR/jars"
+JAR_PATH="$REPO_DIR/jars/gcs-connector-hadoop3.jar"
+if [ ! -f "$JAR_PATH" ]; then
+    wget -q "https://storage.googleapis.com/hadoop-lib/gcs/gcs-connector-hadoop3-latest.jar" \
+         -O "$JAR_PATH"
+    echo "Downloaded: $JAR_PATH"
+else
+    echo "JAR already present: $JAR_PATH"
+fi
+
 echo "=== Writing environment file ==="
 cat > "$REPO_DIR/.env" <<EOF
 # Source this file before running notebooks:  source .env
