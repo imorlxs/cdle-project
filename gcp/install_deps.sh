@@ -33,7 +33,7 @@ echo "=== Writing environment file ==="
 cat > "$REPO_DIR/.env" <<EOF
 # Source this file before running notebooks:  source .env
 export JAVA_HOME=$JAVA_HOME
-export GCS_BUCKET=\${PROJECT}-cdle-data    # replace PROJECT with your GCP project id
+export GCS_BUCKET=steel-watch-488511-k6-cdle-data
 export DATA_DIR=$HOME/data
 export PYSPARK_PYTHON=$(which python3)
 export PYSPARK_DRIVER_PYTHON=$(which python3)
