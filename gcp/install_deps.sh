@@ -12,7 +12,7 @@ REPO_DIR="$HOME/cdle-project"
 
 echo "=== Cloning repo (if not already present) ==="
 if [ ! -d "$REPO_DIR" ]; then
-    git clone https://github.com/YOUR_ORG/cdle-project.git "$REPO_DIR"
+    git clone https://github.com/imorlxs/cdle-project.git "$REPO_DIR"
 fi
 cd "$REPO_DIR"
 
