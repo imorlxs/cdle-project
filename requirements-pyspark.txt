@@ -1,6 +1,8 @@
 # PySpark + Koalas (pyspark.pandas)
 # Note: Koalas is now bundled inside PySpark >= 3.2 as pyspark.pandas
-pyspark>=3.4.0
+# PySpark 3.x requires Java 11+; PySpark 4.x requires Java 17.
+# Pin to 3.x so the VM's Java 11 install works without upgrading Java.
+pyspark>=3.4.0,<4.0.0
 py4j>=0.10.9.7
 
 # Storage
