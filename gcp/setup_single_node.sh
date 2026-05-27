@@ -15,7 +15,7 @@
 set -e
 
 PROJECT=$(gcloud config get-value project)
-ZONE="europe-southwest1"
+ZONE="europe-west9"
 INSTANCE_NAME="cdle-single-node"
 MACHINE_TYPE="n2-highmem-16"
 DISK_SIZE="500GB"
