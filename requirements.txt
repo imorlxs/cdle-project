@@ -1,7 +1,8 @@
 # Core data libraries
 dask[complete]>=2024.1.0
 pandas>=2.0.0
-numpy>=1.24.0
+# NumPy 2.0 removed np.NaN; PySpark 3.x requires <2.0
+numpy>=1.24.0,<2.0.0
 pyarrow>=14.0.0
 fastparquet>=2023.10.0
 
