@@ -15,7 +15,7 @@
 set -e
 
 PROJECT=$(gcloud config get-value project)
-ZONE="europe-southwest1-c"
+ZONE="europe-southwest1"
 INSTANCE_NAME="cdle-single-node"
 MACHINE_TYPE="n2-highmem-16"
 DISK_SIZE="500GB"
@@ -25,7 +25,7 @@ BUCKET_NAME="${PROJECT}-cdle-data"     # GCS bucket for taxi data
 
 echo "=== Creating GCS bucket: ${BUCKET_NAME} ==="
 gcloud storage buckets create "gs://${BUCKET_NAME}" \
-    --location=us-central1 \
+    --location=europe-southwest1 \
     --uniform-bucket-level-access 2>/dev/null || echo "(bucket already exists)"
 
 echo "=== Creating VM: ${INSTANCE_NAME} (${MACHINE_TYPE}) ==="
