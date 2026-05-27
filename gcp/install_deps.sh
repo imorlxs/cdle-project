@@ -24,15 +24,20 @@ echo "=== Installing dependencies ==="
 pip install --upgrade pip
 pip install -r requirements-pyspark.txt
 
-echo "=== Checking Java for PySpark ==="
+echo "=== Configuring Java for PySpark 3.1.x (requires Java 8 or 11, NOT 17) ==="
+# Ensure Java 11 is installed
+sudo apt-get install -y openjdk-11-jdk 2>/dev/null || true
+# Switch active java to 11
+sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java 2>/dev/null || true
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 java -version 2>&1 | head -1
-export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
 echo "JAVA_HOME=$JAVA_HOME"
 
 echo "=== Writing environment file ==="
 cat > "$REPO_DIR/.env" <<EOF
 # Source this file before running notebooks:  source .env
-export JAVA_HOME=$JAVA_HOME
+# PySpark 3.1.x requires Java 11 (not 17)
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
 export GCS_BUCKET=steel-watch-488511-k6-cdle-data
 export DATA_DIR=$HOME/data
 export PYSPARK_PYTHON=$(which python3)

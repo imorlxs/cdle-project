@@ -1,13 +1,17 @@
-# PySpark + Koalas (pyspark.pandas)
-# Note: Koalas is now bundled inside PySpark >= 3.2 as pyspark.pandas
-# PySpark 3.x requires Java 11+; PySpark 4.x requires Java 17.
-# Pin to 3.x so the VM's Java 11 install works without upgrading Java.
-pyspark>=3.4.0,<4.0.0
-py4j>=0.10.9.7
+# Exact versions from the blog (Xinrong Meng & Hyukjin Kwon)
+#
+# Koalas 1.7.0 is compatible with PySpark 3.0.x and 3.1.x ONLY.
+# PySpark 3.1.x requires Java 8 or 11 — set JAVA_HOME accordingly.
+# If you have Java 17 installed, switch to Java 11 first:
+#   sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java
+#   export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+pyspark==3.1.2
+koalas==1.7.0
+py4j>=0.10.9.2
 
 # Storage
-gcsfs>=2023.9.0
-google-cloud-storage>=2.10.0
+gcsfs>=2021.4.0
+google-cloud-storage>=1.37.0
 
 # Includes all base requirements
 -r requirements.txt
