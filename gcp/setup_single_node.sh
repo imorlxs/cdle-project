@@ -17,7 +17,7 @@ set -e
 PROJECT=$(gcloud config get-value project)
 ZONE="us-central1-a"
 INSTANCE_NAME="cdle-single-node"
-MACHINE_TYPE="n2-highmem-64"    # 64 vCPU, 512 GB RAM  (downscale to n2-highmem-16 to save credits)
+MACHINE_TYPE="n2-highmem-16"
 DISK_SIZE="500GB"
 IMAGE_FAMILY="debian-11"
 IMAGE_PROJECT="debian-cloud"
